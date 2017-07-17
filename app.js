@@ -5,6 +5,13 @@ const path = require('path');
 let wss = new WebSocketServer({port: 9879})
 let userDataDir = "./user_data"
 
+DEBUG = false
+function debug_log() {
+    if(DEBUG) {
+        console.log.apply(this, arguments)
+    }
+}
+
 wss.on('connection', ws => {
     let last_modified = 0
     let first_status_check = true
@@ -14,7 +21,7 @@ wss.on('connection', ws => {
         let lastModifiedInfoforUser = path.join(pathToUser, 'last_modified.json')
         let lastModifiedInfoForUserObj = {}
         if(received_message['type'] == 'status_check') {
-            console.log('Do status check')
+            debug_log('Do status check')
             if(first_status_check) {
                 try {
                     if(fs.existsSync(lastModifiedInfoforUser)) {
@@ -26,22 +33,22 @@ wss.on('connection', ws => {
                         }
                     }
                 } catch(e) {
-                    console.log(e)
+                    debug_log(e)
                 }
                 first_status_check = false
             }
             if(last_modified == received_message['last_modified']) {
                 ws.send('last_modified unchanged')
-                console.log('data in sync')
+                debug_log('data in sync')
             } else {
                 ws.send('last_modified changed')
-                console.log('data needs sync')
+                debug_log('data needs sync')
             }
         } else if(received_message['type'] == 'sync') {
-            console.log('Do sync operation')
+            debug_log('Do sync operation')
             let sync_sucess = createOrUpdateUser(received_message)
             if(sync_sucess) {
-                console.log('data synced')
+                debug_log('data synced')
                 last_modified = received_message['last_modified']
                 try {
                     if(Object.keys(lastModifiedInfoForUserObj).length === 0 && fs.existsSync(lastModifiedInfoforUser)) { // populate object with existing data
@@ -50,11 +57,11 @@ wss.on('connection', ws => {
                     lastModifiedInfoForUserObj[received_message['app_name']] = last_modified // set new data
                     fs.writeFileSync(lastModifiedInfoforUser, JSON.stringify(lastModifiedInfoForUserObj)) // write updated obj
                 } catch(e) {
-                    console.log(e)
+                    debug_log(e)
                 }
                 ws.send('sync success')
             } else {
-                console.log('sync operation failed')
+                debug_log('sync operation failed')
                 ws.send('sync failed')
             }
         }
